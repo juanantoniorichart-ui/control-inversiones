@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Control de Inversiones</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: Arial, sans-serif; background: #f0f2f5; color: #1a1a2e; font-size: 14px; }
+h1 { background: #1a1a2e; color: white; padding: 14px 20px; font-size: 18px; }
+#toolbar { background: white; padding: 10px 20px; border-bottom: 1px solid #ddd; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+#toolbar label { font-size: 13px; color: #555; }
+#toolbar input[type=date] { padding: 5px 8px; border: 1px solid #ccc; border-radius: 5px; font-size: 13px; }
+button { padding: 7px 14px; border: none; border-radius: 5px; cursor: pointer; font-size: 13px; font-weight: bold; }
+.btn-blue  { background: #2563eb; color: white; }
+.btn-green { background: #16a34a; color: white; }
+.btn-gray  { background: #6b7280; color: white; }
+.btn-red   { background: #dc2626; color: white; padding: 3px 8px; font-size: 11px; }
+#tabs { background: white; padding: 0 20px; border-bottom: 2px solid #e5e7eb; display: flex; gap: 0; }
+.tab { padding: 10px 18px; cursor: pointer; border-bottom: 3px solid transparent; font-size: 13px; font-weight: bold; color: #6b7280; background: none; border-radius: 0; }
+.tab.active { border-bottom-color: #2563eb; color: #2563eb; }
+#main { padding: 16px 20px; }
+.page { display: none; }
+.page.active { display: block; }
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; margin-bottom: 16px; }
+.card { background: white; border-radius: 8px; padding: 12px 14px; border-left: 4px solid #2563eb; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+.card .lbl { font-size: 11px; color: #6b7280; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 4px; }
+.card .val { font-size: 17px; font-weight: bold; font-family: monospace; }
+.card .sub { font-size: 11px; color: #6b7280; margin-top: 2px; font-family: monospace; }
+.pos { color: #16a34a; }
+.neg { color: #dc2626; }
+.section { background: white; border-radius: 8px; margin-bottom: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+.sec-title { background: #1e3a5f; color: #fbbf24; padding: 10px 14px; font-weight: bold; font-size: 14px; }
+.tbl-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; min-width: 580px; }
+th { background: #f8fafc; color: #6b7280; font-size: 11px; text-transform: uppercase; padding: 8px 10px; text-align: right; border-bottom: 1px solid #e5e7eb; font-weight: 600; white-space: nowrap; }
+th:first-child { text-align: left; }
+td { padding: 9px 10px; text-align: right; border-bottom: 1px solid #f1f5f9; font-size: 13px; font-family: monospace; white-space: nowrap; }
+td:first-child { text-align: left; font-family: Arial, sans-serif; }
+tr:hover td { background: #f8fafc; }
+.sub-row td { background: #fafafa; }
+.sub-row td:first-child { padding-left: 24px; color: #374151; }
+.tot-row td { background: #eff6ff; font-weight: bold; border-top: 2px solid #bfdbfe; }
+.badge { display: inline-block; padding: 2px 7px; border-radius: 20px; font-size: 11px; font-weight: bold; font-family: monospace; }
+.badge.pos { background: #dcfce7; color: #15803d; }
+.badge.neg { background: #fee2e2; color: #b91c1c; }
+.badge.neu { background: #f1f5f9; color: #64748b; }
+.badge.div { background: #dbeafe; color: #1d4ed8; }
+input[type=number].mkt { width: 100px; text-align: right; padding: 4px 6px; border: 1px solid #d1d5db; border-radius: 4px; font-family: monospace; font-size: 12px; }
+input[type=number].mkt:focus { outline: none; border-color: #2563eb; }
+.form-box { background: white; border-radius: 8px; padding: 14px 16px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+.form-box h3 { font-size: 14px; margin-bottom: 10px; color: #1a1a2e; }
+.form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; align-items: end; }
+.ff { display: flex; flex-direction: column; gap: 3px; }
+.ff label { font-size: 11px; color: #6b7280; }
+.ff input, .ff select { padding: 5px 8px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 12px; font-family: monospace; }
+.ff input:focus, .ff select:focus { outline: none; border-color: #2563eb; }
+.status { font-size: 12px; color: #6b7280; font-family: monospace; padding: 6px 20px; background: #f8fafc; border-bottom: 1px solid #e5e7eb; }
+textarea.jsonbox { width: 100%; height: 220px; font-family: monospace; font-size: 11px; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; resize: vertical; }
+.modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 100; align-items: center; justify-content: center; }
+.modal-bg.open { display: flex; }
+.modal { background: white; border-radius: 10px; padding: 20px; width: 90%; max-width: 520px; max-height: 90vh; overflow-y: auto; }
+.modal h3 { font-size: 15px; margin-bottom: 12px; }
+.toast { position: fixed; bottom: 20px; right: 20px; background: #16a34a; color: white; padding: 10px 18px; border-radius: 8px; font-size: 13px; font-weight: bold; display: none; z-index: 200; }
+.hist-tabs { display: flex; gap: 4px; margin-bottom: 10px; }
+.htb { padding: 5px 12px; border-radius: 5px; border: 1px solid #d1d5db; background: white; cursor: pointer; font-size: 12px; font-weight: bold; color: #6b7280; }
+.htb.active { background: #2563eb; color: white; border-color: #2563eb; }
+</style>
+</head>
+<body>
+
+<h1>📊 Control Semanal de Inversiones</h1>
+
+<div id="toolbar">
+  <label>Semana:</label>
+  <input type="date" id="wdate">
+  <button class="btn-blue" onclick="saveWeek()">💾 Guardar semana</button>
+  <button class="btn-green" onclick="openExport()">⬇ Exportar JSON</button>
+  <button class="btn-gray" onclick="openImport()">⬆ Importar JSON</button>
+</div>
+
+<div class="status" id="status">Cargando...</div>
+
+<div id="tabs">
+  <button class="tab active" onclick="goTab('ov',this)">📈 Resumen</button>
+  <button class="tab" onclick="goTab('dv',this)">💶 Dividendos</button>
+  <button class="tab" onclick="goTab('aq',this)">🧾 Adquisiciones</button>
+  <button class="tab" onclick="goTab('hi',this)">📅 Histórico</button>
+</div>
+
+<div id="main">
+
+  <!-- RESUMEN -->
+  <div class="page active" id="pg-ov">
+    <div class="cards" id="cards"></div>
+    <div id="sections"></div>
+  </div>
+
+  <!-- DIVIDENDOS -->
+  <div class="page" id="pg-dv">
+    <div class="form-box">
+      <h3>💶 Registrar dividendo o cupón</h3>
+      <div class="form-grid">
+        <div class="ff"><label>Activo</label>
+          <select id="dv-aid">
+            <option value="acciones">📈 Acciones</option>
+            <option value="cln">📋 CLN SAN RKUNY</option>
+            <option value="phoenix">📋 Phoenix Ørsted</option>
+          </select>
+        </div>
+        <div class="ff"><label>Fecha</label><input type="date" id="dv-dt"></div>
+        <div class="ff"><label>Bruto €</label><input type="number" id="dv-gr" step="0.01" placeholder="Opcional"></div>
+        <div class="ff"><label>Retención €</label><input type="number" id="dv-tx" step="0.01" placeholder="Opcional"></div>
+        <div class="ff"><label>Neto € (obligatorio)</label><input type="number" id="dv-nt" step="0.01" placeholder="Requerido"></div>
+        <div class="ff"><label>Concepto</label><input type="text" id="dv-no" placeholder="cupón, dividendo..."></div>
+        <div class="ff" style="align-self:end"><button class="btn-green" onclick="addDiv()" style="width:100%">✓ Añadir</button></div>
+      </div>
+    </div>
+    <div id="dv-list"></div>
+  </div>
+
+  <!-- ADQUISICIONES -->
+  <div class="page" id="pg-aq">
+    <div class="form-box">
+      <h3>➕ Registrar adquisición o aportación</h3>
+      <div class="form-grid">
+        <div class="ff"><label>Activo</label>
+          <select id="aq-aid">
+            <option value="fondos">🏦 Portfolio de Fondos</option>
+            <option value="acciones">📈 Portfolio de Acciones</option>
+            <option value="indexa">💼 Indexa Capital</option>
+            <option value="ibercaja">💼 Ibercaja Fondos</option>
+            <option value="eqqq">🇺🇸 EQQQ Nasdaq</option>
+            <option value="bitcoin">₿ Bitcoin</option>
+            <option value="solana">₿ Solana</option>
+            <option value="cln">📋 CLN SAN RKUNY</option>
+            <option value="phoenix">📋 Phoenix Ørsted</option>
+          </select>
+        </div>
+        <div class="ff"><label>Fecha</label><input type="date" id="aq-dt"></div>
+        <div class="ff"><label>Nº Participaciones</label><input type="number" id="aq-un" step="0.000001" placeholder="Opcional"></div>
+        <div class="ff"><label>Precio por unidad €</label><input type="number" id="aq-pr" step="0.000001" placeholder="Opcional"></div>
+        <div class="ff"><label>Total invertido € (obligatorio)</label><input type="number" id="aq-to" step="0.01" placeholder="Requerido"></div>
+        <div class="ff"><label>Notas</label><input type="text" id="aq-no"></div>
+        <div class="ff" style="align-self:end"><button class="btn-green" onclick="addAcq()" style="width:100%">✓ Añadir</button></div>
+      </div>
+    </div>
+    <div id="aq-list"></div>
+  </div>
+
+  <!-- HISTÓRICO -->
+  <div class="page" id="pg-hi">
+    <div class="hist-tabs">
+      <button class="htb active" onclick="setHistP('w',this)">Semanal</button>
+      <button class="htb" onclick="setHistP('m',this)">Mensual</button>
+      <button class="htb" onclick="setHistP('q',this)">Trimestral</button>
+      <button class="htb" onclick="setHistP('a',this)">Anual</button>
+    </div>
+    <div class="section"><div class="tbl-wrap" id="hist-body"></div></div>
+  </div>
+
+</div>
+
+<!-- MODAL EXPORT -->
+<div class="modal-bg" id="modal-exp">
+  <div class="modal">
+    <h3>⬇ Exportar — copia este texto y guárdalo</h3>
+    <p style="font-size:12px;color:#6b7280;margin-bottom:8px">Selecciona todo el texto del recuadro y cópialo (Ctrl+A, Ctrl+C). Guárdalo en un archivo de texto en tu ordenador.</p>
+    <textarea class="jsonbox" id="exp-ta" readonly onclick="this.select()"></textarea>
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <button class="btn-blue" onclick="copyExport()" style="flex:1">📋 Copiar al portapapeles</button>
+      <button class="btn-gray" onclick="closeModal('modal-exp')" style="flex:1">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL IMPORT -->
+<div class="modal-bg" id="modal-imp">
+  <div class="modal">
+    <h3>⬆ Importar — pega tu JSON aquí</h3>
+    <p style="font-size:12px;color:#6b7280;margin-bottom:8px">Pega el texto que copiaste al exportar y pulsa "Importar datos".</p>
+    <textarea class="jsonbox" id="imp-ta" placeholder='Pega aquí el JSON exportado...'></textarea>
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <button class="btn-green" onclick="doImport()" style="flex:1">✓ Importar datos</button>
+      <button class="btn-gray" onclick="closeModal('modal-imp')" style="flex:1">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL PERIODOS -->
+<div class="modal-bg" id="modal-per">
+  <div class="modal">
+    <h3 id="per-title"></h3>
+    <div id="per-body"></div>
+    <button class="btn-gray" onclick="closeModal('modal-per')" style="width:100%;margin-top:12px">Cerrar</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+var ASSETS = [
+  {id:"fondos",   name:"Mi Portfolio de Fondos",    icon:"🏦", acq:204112.98, type:"s"},
+  {id:"acciones", name:"Mi Portfolio de Acciones",  icon:"📈", acq:7410.61,   type:"s", div:true},
+  {id:"otras",    name:"Otras Carteras",             icon:"💼", type:"g", ch:[
+    {id:"indexa",   name:"Indexa Capital",  acq:33118.90},
+    {id:"ibercaja", name:"Ibercaja Fondos", acq:37958.51}
+  ]},
+  {id:"eqqq",    name:"EQQQ Nasdaq",           icon:"🇺🇸", acq:1807,   type:"s"},
+  {id:"cripto",  name:"Criptomonedas",         icon:"₿",   type:"g", ch:[
+    {id:"bitcoin", name:"Bitcoin", acq:26.82},
+    {id:"solana",  name:"Solana",  acq:31.01}
+  ]},
+  {id:"rfija",   name:"Cartera de Renta Fija", icon:"📋", type:"g", ch:[
+    {id:"cln",     name:"CLN SAN RKUNY 090130",  acq:80000, div:true},
+    {id:"phoenix", name:"Phoenix Ørsted 291027", acq:10000, div:true}
+  ]}
+];
+var DIV_IDS = ["acciones","cln","phoenix"];
+var LEAF_IDS = [];
+for (var i=0; i<ASSETS.length; i++) {
+  if (ASSETS[i].type==="s") LEAF_IDS.push(ASSETS[i].id);
+  else for (var j=0; j<ASSETS[i].ch.length; j++) LEAF_IDS.push(ASSETS[i].ch[j].id);
+}
+var TOTAL_ACQ = 0;
+for (var i=0; i<ASSETS.length; i++) {
+  if (ASSETS[i].type==="s") TOTAL_ACQ += ASSETS[i].acq;
+  else for (var j=0; j<ASSETS[i].ch.length; j++) TOTAL_ACQ += ASSETS[i].ch[j].acq;
+}
+var SK = "inv_ctrl_v1";
+var D = {weeks:[], acqs:[], divs:[]};
+var histP = "w";
+
+function ga(id) {
+  for (var i=0; i<ASSETS.length; i++) {
+    if (ASSETS[i].type==="s" && ASSETS[i].id===id) return ASSETS[i];
+    if (ASSETS[i].type==="g") {
+      for (var j=0; j<ASSETS[i].ch.length; j++) {
+        if (ASSETS[i].ch[j].id===id) return ASSETS[i].ch[j];
+      }
+    }
+  }
+  return null;
+}
+function gs(id) {
+  for (var i=0; i<ASSETS.length; i++) {
+    if (ASSETS[i].type==="s" && ASSETS[i].id===id) return ASSETS[i];
+    if (ASSETS[i].type==="g") {
+      for (var j=0; j<ASSETS[i].ch.length; j++) {
+        if (ASSETS[i].ch[j].id===id) return ASSETS[i];
+      }
+    }
+  }
+  return null;
+}
+
+function fN(n, d) {
+  if (n===null || n===undefined || isNaN(n)) return "—";
+  if (d===undefined) d=2;
+  return Number(n).toLocaleString("es-ES", {minimumFractionDigits:d, maximumFractionDigits:d});
+}
+function fE(n) { return n===null||n===undefined||isNaN(n) ? "—" : fN(n)+" €"; }
+function fP(n) { return n===null||n===undefined||isNaN(n) ? "—" : (n>=0?"+":"")+fN(n)+"%"; }
+function fD(n) { return n===null||n===undefined||isNaN(n) ? "—" : (n>=0?"+":"")+fN(n)+" €"; }
+function bc(n) { return n===null||n===undefined||isNaN(n) ? "neu" : n>0?"pos":n<0?"neg":"neu"; }
+function dES(s) { if (!s) return "—"; var p=s.split("-"); return p[2]+"/"+p[1]+"/"+p[0]; }
+function today() { return new Date().toISOString().slice(0,10); }
+
+function setStatus(msg) { document.getElementById("status").textContent = msg; }
+function showToast(msg, err) {
+  var t = document.getElementById("toast");
+  t.textContent = msg;
+  t.style.background = err ? "#dc2626" : "#16a34a";
+  t.style.display = "block";
+  setTimeout(function(){ t.style.display="none"; }, 3000);
+}
+
+function loadData() {
+  try {
+    var raw = localStorage.getItem(SK);
+    if (raw) {
+      var p = JSON.parse(raw);
+      if (p && p.weeks) {
+        D = p;
+        if (!D.acqs) D.acqs = D.acquisitions || [];
+        if (!D.divs) D.divs = D.dividends || [];
+      }
+    }
+  } catch(e) {}
+  if (!D.weeks) D.weeks = [];
+  if (!D.acqs)  D.acqs  = [];
+  if (!D.divs)  D.divs  = [];
+  var n = D.weeks.length;
+  setStatus(n>0 ? "✓ "+n+" semana(s) guardada(s) · "+D.acqs.length+" adq · "+D.divs.length+" dividendos" : "Sin datos guardados aún — introduce valores y pulsa Guardar semana");
+}
+
+function saveData() {
+  try {
+    localStorage.setItem(SK, JSON.stringify(D));
+    var n = D.weeks.length;
+    setStatus("✓ Guardado — "+n+" semana(s) · "+D.acqs.length+" adq · "+D.divs.length+" dividendos");
+  } catch(e) {
+    setStatus("⚠ Error al guardar");
+  }
+}
+
+function pWk(id) {
+  var s = D.weeks.slice().sort(function(a,b){return b.date.localeCompare(a.date);});
+  if (!s.length) return null;
+  var v = s[0].values && s[0].values[id];
+  return (v!=null && !isNaN(v)) ? v : null;
+}
+function nWk(id, n) {
+  var s = D.weeks.slice().sort(function(a,b){return b.date.localeCompare(a.date);});
+  if (s.length<n) return null;
+  var v = s[n-1].values && s[n-1].values[id];
+  return (v!=null && !isNaN(v)) ? v : null;
+}
+function dvA(id) {
+  var t=0;
+  for (var i=0; i<D.divs.length; i++) if (D.divs[i].assetId===id) t+=D.divs[i].net||0;
+  return t;
+}
+function dvS(sid) {
+  var sec = null;
+  for (var i=0; i<ASSETS.length; i++) if (ASSETS[i].id===sid) { sec=ASSETS[i]; break; }
+  if (!sec) return 0;
+  var ids = sec.type==="s" ? [sec.id] : sec.ch.map(function(c){return c.id;});
+  var t=0; for (var i=0; i<ids.length; i++) t+=dvA(ids[i]);
+  return t;
+}
+function dvAll() { var t=0; for (var i=0; i<D.divs.length; i++) t+=D.divs[i].net||0; return t; }
+
+function getMkt(id) { return parseFloat(document.getElementById("m_"+id) ? document.getElementById("m_"+id).value : ""); }
+
+function bdg(val, type) { return '<span class="badge '+type+'">'+val+'</span>'; }
+
+function renderAll() {
+  renderSummary();
+  renderSections();
+  renderDivs();
+  renderAcqs();
+  renderHist();
+}
+
+function renderSummary() {
+  var totMkt=0;
+  for (var i=0; i<LEAF_IDS.length; i++) { var v=getMkt(LEAF_IDS[i]); if (!isNaN(v)) totMkt+=v; }
+  var pnl = totMkt>0 ? totMkt-TOTAL_ACQ : null;
+  var pnlPct = pnl!==null ? (pnl/TOTAL_ACQ)*100 : null;
+  var prev=0, hasPrev=true;
+  for (var i=0; i<LEAF_IDS.length; i++) { var p=pWk(LEAF_IDS[i]); if (p===null){hasPrev=false;break;} prev+=p; }
+  var wkD = hasPrev&&totMkt>0 ? totMkt-prev : null;
+  var dvT = dvAll();
+  var rt = pnl!==null ? pnl+dvT : null;
+
+  document.getElementById("cards").innerHTML =
+    '<div class="card"><div class="lbl">Inversión total</div><div class="val">'+fE(TOTAL_ACQ)+'</div><div class="sub">adquisición</div></div>'+
+    '<div class="card"><div class="lbl">Valor de mercado</div><div class="val">'+(totMkt>0?fE(totMkt):"—")+'</div><div class="sub">actual</div></div>'+
+    '<div class="card"><div class="lbl">Ganancia / Pérdida</div><div class="val '+(pnl!==null?(pnl>=0?"pos":"neg"):"")+'">'+( pnl!==null?fD(pnl):"—")+'</div><div class="sub">'+(pnlPct!==null?fP(pnlPct):"—")+'</div></div>'+
+    '<div class="card"><div class="lbl">Variación semanal</div><div class="val '+(wkD!==null?(wkD>=0?"pos":"neg"):"")+'">'+( wkD!==null?fP((wkD/prev)*100):"—")+'</div><div class="sub">'+(wkD!==null?fD(wkD)+" vs sem.ant.":"sin historial")+'</div></div>'+
+    '<div class="card"><div class="lbl">Dividendos cobrados</div><div class="val">'+fE(dvT)+'</div><div class="sub">neto total</div></div>'+
+    '<div class="card"><div class="lbl">Rentabilidad total</div><div class="val '+(rt!==null?(rt>=0?"pos":"neg"):"")+'">'+( rt!==null?fD(rt):"—")+'</div><div class="sub">'+(rt!==null?fP((rt/TOTAL_ACQ)*100)+" (plusv.+divs.)":"—")+'</div></div>';
+}
+
+function renderSections() {
+  var cont = document.getElementById("sections");
+  cont.innerHTML = "";
+  for (var si=0; si<ASSETS.length; si++) {
+    var sec = ASSETS[si];
+    var hasDv = false;
+    if (sec.type==="s") hasDv = DIV_IDS.indexOf(sec.id)>=0;
+    else { for (var ci=0; ci<sec.ch.length; ci++) if (DIV_IDS.indexOf(sec.ch[ci].id)>=0) hasDv=true; }
+    var rows = sec.type==="s" ? [sec] : sec.ch;
+    var dvHead = hasDv ? '<th>Dividendos</th>' : "";
+    var tbody = "";
+    for (var ri=0; ri<rows.length; ri++) {
+      var a = rows[ri];
+      var isSub = sec.type==="g";
+      var v = getMkt(a.id);
+      var diff = !isNaN(v) ? v-a.acq : null;
+      var pct  = diff!==null ? (diff/a.acq)*100 : null;
+      var pw = pWk(a.id);
+      var pm = nWk(a.id,4);
+      var wd = (pw!==null && !isNaN(v)) ? v-pw : null;
+      var md = (pm!==null && !isNaN(v)) ? v-pm : null;
+      var dvCell = "";
+      if (hasDv) {
+        if (DIV_IDS.indexOf(a.id)>=0) {
+          var dv = dvA(a.id);
+          dvCell = '<td>'+bdg(dv>0?fE(dv):"—","div")+'</td>';
+        } else dvCell = "<td></td>";
+      }
+      var nameHtml = isSub
+        ? '&nbsp;&nbsp;&nbsp;↳ '+a.name+'<br><small style="color:#9ca3af;font-size:11px">Adq: '+fE(a.acq)+'</small>'
+        : '<strong>'+a.name+'</strong><br><small style="color:#9ca3af;font-size:11px">Adq: '+fE(a.acq)+'</small>';
+      tbody += '<tr class="'+(isSub?"sub-row":"")+'">'+
+        '<td>'+nameHtml+'</td>'+
+        '<td><input type="number" class="mkt" id="m_'+a.id+'" step="0.01" placeholder="'+fN(a.acq)+'" oninput="onInp()"></td>'+
+        '<td>'+(diff!==null?bdg(fD(diff),bc(diff)):bdg("—","neu"))+'</td>'+
+        '<td>'+(pct!==null?bdg(fP(pct),bc(pct)):bdg("—","neu"))+'</td>'+
+        '<td>'+(wd!==null?bdg(fP((wd/pw)*100),bc(wd)):'<span style="color:#9ca3af">—</span>')+'</td>'+
+        '<td>'+(md!==null?bdg(fP((md/pm)*100),bc(md)):'<span style="color:#9ca3af">—</span>')+'</td>'+
+        dvCell+
+        '<td><button onclick="showPer(\''+a.id+'\')" style="font-size:11px;padding:3px 8px;background:#e5e7eb;border:none;border-radius:4px;cursor:pointer">↗ Detalle</button></td>'+
+        '</tr>';
+    }
+    if (sec.type==="g") {
+      var subAcq=0; for (var ci=0; ci<sec.ch.length; ci++) subAcq+=sec.ch[ci].acq;
+      var vals=[]; var allOk=true;
+      for (var ci=0; ci<sec.ch.length; ci++) { var vv=getMkt(sec.ch[ci].id); if(isNaN(vv)){allOk=false;break;} vals.push(vv); }
+      var subMkt=allOk?0:null; if(allOk) for(var ci=0;ci<vals.length;ci++) subMkt+=vals[ci];
+      var sdiff = allOk ? subMkt-subAcq : null;
+      var spct  = sdiff!==null ? (sdiff/subAcq)*100 : null;
+      var prev2=0,hp2=true; for(var ci=0;ci<sec.ch.length;ci++){var pp=pWk(sec.ch[ci].id);if(pp===null){hp2=false;break;}prev2+=pp;}
+      var mo2=0,hm2=true; for(var ci=0;ci<sec.ch.length;ci++){var mp=nWk(sec.ch[ci].id,4);if(mp===null){hm2=false;break;}mo2+=mp;}
+      var dvCell2 = hasDv ? '<td>'+bdg(dvS(sec.id)>0?fE(dvS(sec.id)):"—","div")+'</td>' : "";
+      tbody += '<tr class="tot-row">'+
+        '<td><strong>Subtotal '+sec.name+'</strong></td>'+
+        '<td>'+(allOk?bdg(fE(subMkt),"neu"):bdg("—","neu"))+'</td>'+
+        '<td>'+(sdiff!==null?bdg(fD(sdiff),bc(sdiff)):bdg("—","neu"))+'</td>'+
+        '<td>'+(spct!==null?bdg(fP(spct),bc(spct)):bdg("—","neu"))+'</td>'+
+        '<td>'+(hp2&&allOk?bdg(fP((subMkt-prev2)/prev2*100),bc(subMkt-prev2)):bdg("—","neu"))+'</td>'+
+        '<td>'+(hm2&&allOk?bdg(fP((subMkt-mo2)/mo2*100),bc(subMkt-mo2)):bdg("—","neu"))+'</td>'+
+        dvCell2+'<td></td></tr>';
+    }
+    cont.innerHTML += '<div class="section">'+
+      '<div class="sec-title">'+sec.icon+' '+sec.name+'</div>'+
+      '<div class="tbl-wrap"><table>'+
+      '<thead><tr><th>Activo</th><th>Valor de mercado</th><th>Gan./Pérd. €</th><th>Gan./Pérd. %</th><th>Var. semanal</th><th>Var. mensual</th>'+(hasDv?'<th>Dividendos</th>':'')+'<th></th></tr></thead>'+
+      '<tbody>'+tbody+'</tbody></table></div></div>';
+  }
+}
+
+function onInp() { renderSummary(); renderSections(); }
+
+function saveWeek() {
+  var date = document.getElementById("wdate").value;
+  if (!date) { showToast("⚠ Selecciona una fecha primero", true); return; }
+  var values = {};
+  for (var i=0; i<LEAF_IDS.length; i++) {
+    var v = getMkt(LEAF_IDS[i]);
+    values[LEAF_IDS[i]] = isNaN(v) ? null : v;
+  }
+  var newWeeks = [];
+  for (var i=0; i<D.weeks.length; i++) if (D.weeks[i].date!==date) newWeeks.push(D.weeks[i]);
+  newWeeks.push({date:date, values:values});
+  newWeeks.sort(function(a,b){return a.date.localeCompare(b.date);});
+  D.weeks = newWeeks;
+  saveData();
+  showToast("✓ Semana guardada correctamente");
+  renderHist();
+}
+
+function showPer(id) {
+  var a = ga(id);
+  var cur = getMkt(id);
+  if (!a || isNaN(cur)) { showToast("Introduce primero el valor de mercado", true); return; }
+  var ps = [{l:"Semanal",w:1},{l:"Mensual",w:4},{l:"Trimestral",w:13},{l:"Anual",w:52}];
+  var html = '<table style="width:100%;border-collapse:collapse;font-size:13px">';
+  html += '<tr><th style="text-align:left;padding:5px;color:#6b7280;font-weight:400">Periodo</th><th style="text-align:right;padding:5px;color:#6b7280;font-weight:400">Variación €</th><th style="text-align:right;padding:5px;color:#6b7280;font-weight:400">Variación %</th></tr>';
+  for (var i=0; i<ps.length; i++) {
+    var ref = nWk(id, ps[i].w);
+    if (ref===null) {
+      html += '<tr><td style="padding:6px 5px">'+ps[i].l+'</td><td colspan="2" style="text-align:right;padding:6px 5px;color:#9ca3af">Sin datos históricos</td></tr>';
+    } else {
+      var d = cur-ref, pct=(d/ref)*100;
+      var col = d>=0?"#16a34a":"#dc2626";
+      html += '<tr><td style="padding:6px 5px">'+ps[i].l+'</td><td style="text-align:right;padding:6px 5px;color:'+col+'">'+fD(d)+'</td><td style="text-align:right;padding:6px 5px;color:'+col+'">'+fP(pct)+'</td></tr>';
+    }
+  }
+  var dv = dvA(id);
+  if (dv>0) html += '<tr style="border-top:2px solid #dbeafe"><td style="padding:6px 5px;color:#1d4ed8">Dividendos cobrados</td><td colspan="2" style="text-align:right;padding:6px 5px;color:#1d4ed8">'+fE(dv)+'</td></tr>';
+  html += '</table>';
+  document.getElementById("per-title").textContent = "↗ "+a.name;
+  document.getElementById("per-body").innerHTML = html;
+  document.getElementById("modal-per").classList.add("open");
+}
+
+function addDiv() {
+  var date = document.getElementById("dv-dt").value;
+  if (!date) { showToast("⚠ Introduce la fecha", true); return; }
+  var net = parseFloat(document.getElementById("dv-nt").value);
+  if (isNaN(net)||net<=0) { showToast("⚠ El importe neto es obligatorio", true); return; }
+  var e = {
+    id: Date.now(),
+    assetId: document.getElementById("dv-aid").value,
+    date: date,
+    gross: parseFloat(document.getElementById("dv-gr").value)||null,
+    tax:   parseFloat(document.getElementById("dv-tx").value)||null,
+    net:   net,
+    notes: document.getElementById("dv-no").value
+  };
+  D.divs.push(e);
+  D.divs.sort(function(a,b){return b.date.localeCompare(a.date);});
+  saveData(); showToast("✓ Dividendo registrado");
+  ["dv-gr","dv-tx","dv-nt","dv-no"].forEach(function(x){document.getElementById(x).value="";});
+  renderDivs(); renderSummary(); renderSections();
+}
+
+function delDiv(id) {
+  var nd = [];
+  for (var i=0; i<D.divs.length; i++) if (D.divs[i].id!==id) nd.push(D.divs[i]);
+  D.divs = nd;
+  saveData(); showToast("Eliminado");
+  renderDivs(); renderSummary(); renderSections();
+}
+
+function renderDivs() {
+  var cont = document.getElementById("dv-list");
+  if (!D.divs.length) { cont.innerHTML='<p style="color:#6b7280;padding:12px">No hay dividendos registrados.</p>'; return; }
+  var html = "";
+  for (var di=0; di<DIV_IDS.length; di++) {
+    var id = DIV_IDS[di];
+    var en = []; for(var i=0;i<D.divs.length;i++) if(D.divs[i].assetId===id) en.push(D.divs[i]);
+    if (!en.length) continue;
+    var a=ga(id), s=gs(id), tn=0; for(var i=0;i<en.length;i++) tn+=en[i].net||0;
+    var rows="";
+    for (var i=0; i<en.length; i++) {
+      var e=en[i];
+      rows+='<tr><td>'+dES(e.date)+'</td><td>'+(e.gross!=null?fE(e.gross):"—")+'</td><td>'+(e.tax!=null?fE(e.tax):"—")+'</td><td style="color:#1d4ed8">'+fE(e.net)+'</td><td>'+(e.notes||"—")+'</td><td><button class="btn-red" onclick="delDiv('+e.id+')">✕</button></td></tr>';
+    }
+    rows+='<tr class="tot-row"><td colspan="3">'+en.length+' cobro(s)</td><td style="color:#1d4ed8">'+fE(tn)+'</td><td colspan="2"></td></tr>';
+    html+='<div class="section"><div class="sec-title" style="background:#1e3a5f;color:#93c5fd">'+(s?s.icon:"")+" "+(a?a.name:id)+'</div><div class="tbl-wrap"><table><thead><tr><th style="text-align:left">Fecha</th><th>Bruto</th><th>Retención</th><th style="color:#93c5fd">Neto</th><th>Concepto</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
+  }
+  cont.innerHTML = html;
+}
+
+function addAcq() {
+  var date = document.getElementById("aq-dt").value;
+  if (!date) { showToast("⚠ Introduce la fecha", true); return; }
+  var total = parseFloat(document.getElementById("aq-to").value);
+  if (isNaN(total)||total<=0) { showToast("⚠ El total es obligatorio", true); return; }
+  var e = {
+    id: Date.now(),
+    assetId: document.getElementById("aq-aid").value,
+    date: date,
+    units: parseFloat(document.getElementById("aq-un").value)||null,
+    price: parseFloat(document.getElementById("aq-pr").value)||null,
+    total: total,
+    notes: document.getElementById("aq-no").value
+  };
+  D.acqs.push(e);
+  D.acqs.sort(function(a,b){return b.date.localeCompare(a.date);});
+  saveData(); showToast("✓ Adquisición registrada");
+  ["aq-un","aq-pr","aq-to","aq-no"].forEach(function(x){document.getElementById(x).value="";});
+  renderAcqs();
+}
+
+function delAcq(id) {
+  var nd=[]; for(var i=0;i<D.acqs.length;i++) if(D.acqs[i].id!==id) nd.push(D.acqs[i]);
+  D.acqs=nd; saveData(); showToast("Eliminado"); renderAcqs();
+}
+
+function renderAcqs() {
+  var cont = document.getElementById("aq-list");
+  if (!D.acqs.length) { cont.innerHTML='<p style="color:#6b7280;padding:12px">No hay adquisiciones registradas.</p>'; return; }
+  var html="";
+  for (var si=0; si<ASSETS.length; si++) {
+    var sec=ASSETS[si];
+    var li = sec.type==="s"?[sec.id]:sec.ch.map(function(c){return c.id;});
+    var en=[]; for(var i=0;i<D.acqs.length;i++) if(li.indexOf(D.acqs[i].assetId)>=0) en.push(D.acqs[i]);
+    if (!en.length) continue;
+    var tot=0; for(var i=0;i<en.length;i++) tot+=en[i].total;
+    var rows="";
+    for (var i=0; i<en.length; i++) {
+      var e=en[i], a=ga(e.assetId);
+      rows+='<tr><td>'+dES(e.date)+'</td><td>'+(a?a.name:e.assetId)+'</td><td>'+(e.units!=null?fN(e.units,4):"—")+'</td><td>'+(e.price!=null?fE(e.price):"—")+'</td><td>'+fE(e.total)+'</td><td>'+(e.notes||"—")+'</td><td><button class="btn-red" onclick="delAcq('+e.id+')">✕</button></td></tr>';
+    }
+    rows+='<tr class="tot-row"><td colspan="4">Total '+sec.name+'</td><td>'+fE(tot)+'</td><td colspan="2">'+en.length+' op.</td></tr>';
+    html+='<div class="section"><div class="sec-title">'+sec.icon+' '+sec.name+'</div><div class="tbl-wrap"><table><thead><tr><th style="text-align:left">Fecha</th><th style="text-align:left">Activo</th><th>Partic.</th><th>Precio/Ud.</th><th>Total</th><th>Notas</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
+  }
+  cont.innerHTML=html;
+}
+
+function setHistP(p, btn) {
+  histP=p;
+  document.querySelectorAll(".htb").forEach(function(t){t.classList.remove("active");});
+  btn.classList.add("active");
+  renderHist();
+}
+
+function renderHist() {
+  var cont = document.getElementById("hist-body");
+  var wks = D.weeks.slice().sort(function(a,b){return b.date.localeCompare(a.date);});
+  if (!wks.length) { cont.innerHTML='<p style="padding:16px;color:#6b7280">Guarda tu primera semana para ver el histórico.</p>'; return; }
+  var pL={w:"sem.ant.",m:"mes ant.",q:"trim.ant.",a:"año ant."}[histP];
+  var secHds="";
+  for(var i=0;i<ASSETS.length;i++) secHds+='<th>'+ASSETS[i].icon+' '+ASSETS[i].name.split(" ").slice(0,2).join(" ")+'</th>';
+  var rows="";
+  for (var i=0; i<wks.length; i++) {
+    var w=wks[i], ri=-1;
+    if (histP==="w") ri=i+1;
+    else {
+      var td=new Date(w.date);
+      if (histP==="m") td.setDate(td.getDate()-28);
+      else if (histP==="q") td.setMonth(td.getMonth()-3);
+      else td.setFullYear(td.getFullYear()-1);
+      for(var j=i+1;j<wks.length;j++){if(new Date(wks[j].date)<=td){ri=j;break;}}
+      if(ri===-1) ri=wks.length;
+    }
+    var ref = (ri>=0&&ri<wks.length)?wks[ri]:null;
+    var tm=0; for(var k=0;k<LEAF_IDS.length;k++){var vv=w.values&&w.values[LEAF_IDS[k]];if(vv)tm+=vv;}
+    var tr2=null; if(ref){tr2=0;for(var k=0;k<LEAF_IDS.length;k++){var vv=ref.values&&ref.values[LEAF_IDS[k]];if(vv)tr2+=vv;}}
+    var diff=tr2!==null?tm-tr2:null, pct=tr2&&tr2>0?diff/tr2*100:null;
+    var col=diff!==null?(diff>=0?"#16a34a":"#dc2626"):"inherit";
+    var secs="";
+    for(var si=0;si<ASSETS.length;si++){
+      var sec=ASSETS[si];
+      var li=sec.type==="s"?[sec.id]:sec.ch.map(function(c){return c.id;});
+      var sm=0; for(var k=0;k<li.length;k++){var vv=w.values&&w.values[li[k]];if(vv)sm+=vv;}
+      var sr=null; if(ref){sr=0;for(var k=0;k<li.length;k++){var vv=ref.values&&ref.values[li[k]];if(vv)sr+=vv;}}
+      if(sr&&sr>0){var sd=sm-sr,sp=(sd/sr)*100;secs+='<td style="color:'+(sd>=0?"#16a34a":"#dc2626")+'">'+fP(sp)+'</td>';}
+      else secs+='<td style="color:#9ca3af">'+(sm>0?fE(sm):"—")+'</td>';
+    }
+    rows+='<tr><td>'+dES(w.date)+'</td><td>'+fE(tm)+'</td><td style="color:'+col+'">'+(diff!==null?fD(diff):"—")+'</td><td style="color:'+col+'">'+(pct!==null?fP(pct):"—")+'</td>'+secs+'</tr>';
+  }
+  cont.innerHTML='<table><thead><tr><th style="text-align:left">Fecha</th><th>Total €</th><th>Var. €</th><th>Var. % ('+pL+')</th>'+secHds+'</tr></thead><tbody>'+rows+'</tbody></table>';
+}
+
+function openExport() {
+  document.getElementById("exp-ta").value = JSON.stringify(D, null, 2);
+  document.getElementById("modal-exp").classList.add("open");
+  setTimeout(function(){ document.getElementById("exp-ta").select(); }, 100);
+}
+function copyExport() {
+  var ta = document.getElementById("exp-ta");
+  ta.select();
+  try {
+    navigator.clipboard.writeText(ta.value).then(function(){ showToast("✓ Copiado al portapapeles"); });
+  } catch(e) {
+    document.execCommand("copy");
+    showToast("✓ Copiado");
+  }
+}
+function openImport() {
+  document.getElementById("imp-ta").value = "";
+  document.getElementById("modal-imp").classList.add("open");
+}
+function doImport() {
+  try {
+    var p = JSON.parse(document.getElementById("imp-ta").value.trim());
+    D = {
+      weeks: p.weeks||[],
+      acqs:  p.acqs||p.acquisitions||[],
+      divs:  p.divs||p.dividends||[]
+    };
+    saveData();
+    closeModal("modal-imp");
+    showToast("✓ Datos importados correctamente");
+    renderAll();
+  } catch(e) {
+    showToast("⚠ El texto pegado no es un JSON válido", true);
+  }
+}
+function closeModal(id) { document.getElementById(id).classList.remove("open"); }
+
+function goTab(name, btn) {
+  document.querySelectorAll(".page").forEach(function(p){p.classList.remove("active");});
+  document.querySelectorAll(".tab").forEach(function(t){t.classList.remove("active");});
+  document.getElementById("pg-"+name).classList.add("active");
+  btn.classList.add("active");
+  if (name==="hi") renderHist();
+}
+
+function init() {
+  document.getElementById("wdate").value = today();
+  document.getElementById("dv-dt").value = today();
+  document.getElementById("aq-dt").value = today();
+  loadData();
+  renderAll();
+}
+init();
+</script>
+</body>
+</html>
